@@ -2,27 +2,28 @@ import React from 'react';
 import { View, Button, Text } from 'react-native';
 
 class Home extends React.Component {
-    goToLoginPage = () =>{
+
+    goToLoginPage = () => {
         this.props.navigation.navigate("LoginPage")
     }
 
-    goToRegisterPage = () =>{
+    goToRegisterPage = () => {
         this.props.navigation.navigate("SignUpPage")
     }
 
     render() {
         return (
             <View>
-                <Button 
+                <Button
                     onPress={this.goToLoginPage}
-                    title = "Existed account"
+                    title="Existed account"
                 >
                     Existed account
                 </Button>
-                
-                <Button 
+
+                <Button
                     onPress={this.goToRegisterPage}
-                    title = "Create a new account"
+                    title="Create a new account"
                 >
                     Create a new account
                 </Button>

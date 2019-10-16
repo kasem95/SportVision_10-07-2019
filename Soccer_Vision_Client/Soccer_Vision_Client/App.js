@@ -1,5 +1,5 @@
 import React from 'react';
-import { createAppContainer } from
+import { createAppContainer, createSwitchNavigator } from
   'react-navigation';
 import { createStackNavigator } from 'react-navigation-stack'
 import Home from './Pages/Home';
@@ -7,12 +7,14 @@ import LoginPage from './Pages/LoginPage';
 import SignUpPage from './Pages/RegisterPage';
 import MainPage from './Pages/MainPage'
 import CameraPage from './Pages/CameraPage'
+import ProfilePage from './Pages/ProfilePage'
 import { Provider } from 'mobx-react';
 import Store from './Classes/Store'
 import { AppLoading } from 'expo';
 import { Container } from 'native-base';
 import * as Font from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
+import AuthLoadingScreen from './Components/AuthLoadingScreen'
 
 class App extends React.Component {
 
@@ -50,16 +52,24 @@ class App extends React.Component {
 
 const AppNavigator = createStackNavigator(
   {
-    Home,
-    LoginPage,
-    SignUpPage,
+    ProfilePage,
     MainPage,
-    CameraPage
-  },
-  {
-    initialRouteName: 'Home',
   }
 );
+const AuthStack = createStackNavigator(
+  {
+    Home, 
+    LoginPage,
+    SignUpPage,
+    CameraPage,
+  }
+); 
 
-const AppContainer = createAppContainer(AppNavigator)
+const AppContainer = createAppContainer(createSwitchNavigator({
+  AuthLoading: AuthLoadingScreen,
+  App: AppNavigator,
+  Auth: AuthStack,
+},{
+  initialRouteName: 'AuthLoading'
+}))
 export default App;

@@ -1,15 +1,11 @@
 import React from 'react';
-import { Dimensions } from 'react-native';
 import { Container, Header, Content, Form, Item, Input, Label, Button, Text } from 'native-base';
+import { KeyboardAvoidingView, ScrollView, AsyncStorage } from 'react-native'
 import { observer, inject } from 'mobx-react';
 import User from '../Classes/User'
 import * as Facebook from 'expo-facebook';
 import * as Google from 'expo-google-app-auth';
 
-
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const SCREEN_HEIGHT = Dimensions.get('window').height;
 const AppID = '514084169415898';
 const googleIOSClientID = "478192099665-t6ehj9l5jjsgnl6skpj0o7kie2t43anj.apps.googleusercontent.com"
 const googleAndroidClientID = "478192099665-0rp515m0fkgqebev04qompgtc7ms25m9.apps.googleusercontent.com"
@@ -50,9 +46,10 @@ function Login(props) {
             alert(result);
           } else {
             //console.log(result)
-            let user = new User(result.UserID, result.Email, result.Password, result.Username, result.IsInMatch, result.MatchID);
+            let user = new User(result.UserID, result.Email, result.Password, result.Username, result.IsInMatch, result.MatchID, result.Points);
             props.rootStore.UserStore.insertUser(user);
-            props.navigation.navigate("MainPage")
+            AsyncStorage.setItem('user', JSON.stringify(user))
+            props.navigation.navigate("App")
           }
         },
         error => {
@@ -68,21 +65,49 @@ function Login(props) {
       //after getting the token we can use a simple fetch against the facebook API
       // Get the user's name using Facebook's Graph API
       const response = await
-        fetch(`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${token}`);
+        fetch(`https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${token}`);
       let res = await response.json();
       props.rootStore.UserStore.FBToken = token;
       alert('Logged in!' + `Hi NAME: ${res.name}!\nEMAIL: ${res.email}\nPICTURE:
     ${res.picture}\nRES:${JSON.stringify(res)} `);
+
+      console.log(JSON.stringify(res))
+
       let user = {
-        userID: token,
-        userName: res.name,
+        id: res.id,
+        username: res.name,
         email: res.email
       }
-      props.rootStore.UserStore.user = user;
-      console.log(props.rootStore.UserStore.user)
-      props.navigation.navigate("MainPage");
+      console.log(typeof user.userID)
+      await fetch(`http://ruppinmobile.tempdomain.co.il/site09/Users.asmx/GetLoginDetailsFB`, {
+        method: "POST",
+        body: JSON.stringify(user),
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+        .then(res => {
+          console.log("res=", res);
+          return res.json();
+        })
+        .then(
+          result => {
+            console.log("fetch GET= ", result);
+            let u = JSON.parse(result.d);
+            let u2 = new User(u.UserID, u.Email, u.Password, u.Username, u.IsInMatch, u.MatchID, u.Points, res.picture.data.url);
+            props.rootStore.UserStore.user = u2;
+            AsyncStorage.setItem('user', JSON.stringify(u2))
+            props.navigation.navigate("App");
+          },
+          error => {
+            console.log("=> err post=", error);
+          }
+        );
+
+
     } else {
       // type === 'cancel'
+      console.log("cancelled")
     }
   };
 
@@ -98,13 +123,36 @@ function Login(props) {
       if (result.type === 'success') {
         console.log(result.user);
         let usertemp = {
-          userID: result.user.id,
-          userName: result.user.name,
+          id: result.user.id,
+          username: result.user.name,
           email: result.user.email
         }
-        props.rootStore.UserStore.user = usertemp;
-        console.log(props.rootStore.UserStore.user)
-        props.navigation.navigate("MainPage");
+
+        await fetch(`http://ruppinmobile.tempdomain.co.il/site09/Users.asmx/GetLoginDetailsGoogle`, {
+          method: "POST",
+          body: JSON.stringify(usertemp),
+          headers: {
+            "Content-Type": "application/json"
+          }
+        })
+          .then(res => {
+            console.log("res=", res);
+            return res.json();
+          })
+          .then(
+            result => {
+              console.log("fetch GET= ", result);
+              let u = JSON.parse(result.d);
+              let u2 = new User(u.UserID, u.Email, u.Password, u.Username, u.IsInMatch, u.MatchID, u.Points, result.user.photoUrl);
+              props.rootStore.UserStore.user = u2;
+              AsyncStorage.setItem('user', JSON.stringify(u2))
+              props.navigation.navigate("App");
+            },
+            error => {
+              console.log("=> err post=", error);
+            }
+          );
+
       } else {
         console.log("cancelled")
       }
@@ -121,30 +169,34 @@ function Login(props) {
 
 
   return (
-    <Container>
-        <Header />
-        <Content>
-          <Form>
-            <Item fixedLabel>
-              <Label>Email</Label>
-              <Input onChangeText={val=>changeEmail(val)}/>
-            </Item>
-            <Item fixedLabel last>
-              <Label>Password</Label>
-              <Input onChangeText={val=>changePass(val)}/>
-            </Item>
-          </Form>
-          <Button rounded onPress={login}>
-            <Text>LOGIN</Text>
-          </Button>
-          <Button rounded onPress={btnLoginFB}>
-            <Text>Facebook LOGIN</Text>
-          </Button>
-          <Button rounded onPress={btnLoginG}>
-            <Text>GOOGLE LOGIN</Text>
-          </Button>
-        </Content>
-      </Container>
+    <ScrollView>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        <Container>
+          <Header />
+          <Content>
+            <Form>
+              <Item fixedLabel>
+                <Label>Email</Label>
+                <Input onChangeText={val => changeEmail(val)} />
+              </Item>
+              <Item fixedLabel last>
+                <Label>Password</Label>
+                <Input onChangeText={val => changePass(val)} />
+              </Item>
+            </Form>
+            <Button rounded onPress={login}>
+              <Text>LOGIN</Text>
+            </Button>
+            <Button rounded onPress={btnLoginFB}>
+              <Text>Facebook LOGIN</Text>
+            </Button>
+            <Button rounded onPress={btnLoginG}>
+              <Text>GOOGLE LOGIN</Text>
+            </Button>
+          </Content>
+        </Container>
+      </KeyboardAvoidingView>
+    </ScrollView>
   )
 }
 
